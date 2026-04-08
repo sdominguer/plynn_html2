@@ -326,7 +326,8 @@ button.del-btn:hover { background: var(--red-light); border-color: var(--red); }
     <div class="form-grid" style="margin-bottom:20px;">
       <div class="form-section">
         <h2><span class="icon">🏢</span> Empresa</h2>
-        <input type="text" id="sessionEmpresa" placeholder="Ej: Plynn S.A.S.">
+        <input type="text" id="sessionEmpresa" readonly style="opacity:0.5;cursor:not-allowed;" placeholder="Se asigna automáticamente">
+        <div style="font-size:0.7rem;color:var(--text-mid);margin-top:6px;">Asignado automáticamente desde tu cuenta</div>
       </div>
       <div class="form-section">
         <h2><span class="icon">📅</span> Fecha</h2>
@@ -482,7 +483,8 @@ function loadSessionList() {
 
   updateDbStatus('loading', 'Conectando...');
 
-  fetch(APPS_SCRIPT_URL + '?action=list')
+  var empresaParam = state.empresa ? '&empresa=' + encodeURIComponent(state.empresa) : '';
+  fetch(APPS_SCRIPT_URL + '?action=list' + empresaParam)
     .then(function(r) { return r.json(); })
     .then(function(data) {
       dbConnected = true;
