@@ -316,10 +316,6 @@ button.del-btn:hover { background: var(--red-light); border-color: var(--red); }
       <div id="sessionListArea">
         <div style="text-align:center;padding:16px;color:var(--text-mid);font-size:0.82rem;">Cargando...</div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:14px;">
-        <button class="btn btn-sm btn-primary" onclick="loadSessionList()" style="flex:1;">🔄 Actualizar</button>
-        <button class="btn btn-sm btn-secondary" onclick="newSession()" style="flex:1;">＋ Nueva sesión</button>
-      </div>
     </div>
 
     <!-- Company & Date -->
@@ -433,6 +429,14 @@ var CRITERIA = [
 var FC = CRITERIA.filter(function(c) { return c.axis === 'FACTIBLE'; });
 var EC = CRITERIA.filter(function(c) { return c.axis === 'ESTRATÉGICO'; });
 
+// Quadrant label configuration (used both on-screen and in print)
+var QUADRANT_LABELS = {
+  topLeft:     'INNOVACIÓN ABIERTA',
+  topRight:    'INNOVACIÓN CERRADA',
+  bottomLeft:  'RETOS DESCARTADOS',
+  bottomRight: 'INTRAEMPRENDIMIENTO'
+};
+
 var state = {
   evaluators: [], ideas: [], scores: {},
   currentEval: 0, currentIdea: 0,
@@ -503,7 +507,6 @@ function loadSessionList() {
 }
 
 function renderSessionList(sessions) {
-  // Filtrar por empresa/email del usuario si viene del URL
   if (state.empresa) {
     sessions = sessions.filter(function(s) {
       return (s.empresa || '').toLowerCase() === state.empresa.toLowerCase();
@@ -554,7 +557,6 @@ function loadSavedSession(sessionId) {
         return { title: i.titulo, type: i.tipo, shortName: i.nombreCorto, reto: i.retoAsociado || '' };
       });
 
-      // Restore scores
       state.scores = {};
       state.evaluators.forEach(function(_, ei) {
         state.scores[ei] = {};
@@ -571,7 +573,6 @@ function loadSavedSession(sessionId) {
         }
       });
 
-      // Update UI
       document.getElementById('sessionEmpresa').value = state.empresa;
       document.getElementById('sessionFecha').value = state.fecha;
       document.getElementById('numEvaluators').value = state.evaluators.length;
@@ -631,7 +632,6 @@ function newSession() {
   state.ideas = [];
   state.scores = {};
 
-  // Keep empresa if it came from URL (email from Wix)
   var empresaFromUrl = getUrlParam('empresa');
   if (!empresaFromUrl) {
     state.empresa = '';
@@ -728,7 +728,7 @@ function scheduleAutoSave() {
 }
 
 // ============================================================
-// URL PARAM HELPER (for Wix email integration)
+// URL PARAM HELPER
 // ============================================================
 function getUrlParam(name) {
   var params = new URLSearchParams(window.location.search);
@@ -829,7 +829,6 @@ function collectSetup() {
     if (title) state.ideas.push({ title: title, type: tp, shortName: sn || ('Idea ' + (state.ideas.length + 1)), reto: rt });
   });
 
-  // Preserve scores if same number of ideas
   if (Object.keys(oldScores).length > 0 && oldIdeas.length === state.ideas.length) {
     // Keep existing scores
   } else {
@@ -1127,13 +1126,12 @@ function renderEvalBreakdown() {
 }
 
 // ============================================================
-// QUADRANT CHART
+// QUADRANT CHART (shared drawing function for screen & print)
 // ============================================================
-function renderQuadrant(data) {
-  var canvas = document.getElementById('quadrantChart');
+function drawQuadrantOnCanvas(canvas, data, targetWidth) {
   var ctx = canvas.getContext('2d');
   var dpr = window.devicePixelRatio || 1;
-  var cw = Math.min(680, canvas.parentElement.offsetWidth - 56);
+  var cw = targetWidth || Math.min(680, canvas.parentElement.offsetWidth - 56);
   var ch = Math.round(cw * 0.6);
   canvas.width = cw * dpr;
   canvas.height = ch * dpr;
@@ -1155,10 +1153,10 @@ function renderQuadrant(data) {
   ctx.globalAlpha = 0.9;
   ctx.font = 'bold 9px Montserrat, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#0a90b0'; ctx.fillText('IDEAS PARA ANÁLISIS', padL + w / 4, padT + 18);
-  ctx.fillStyle = '#8a6000'; ctx.fillText('BANCO DE IDEAS', padL + w * 3 / 4, padT + 18);
-  ctx.fillStyle = '#cc2222'; ctx.fillText('IDEAS DESCARTADAS', padL + w / 4, padT + h / 2 + 18);
-  ctx.fillStyle = '#0a90b0'; ctx.fillText('IDEAS PARA ANÁLISIS', padL + w * 3 / 4, padT + h / 2 + 18);
+  ctx.fillStyle = '#0a90b0'; ctx.fillText(QUADRANT_LABELS.topLeft, padL + w / 4, padT + 18);
+  ctx.fillStyle = '#8a6000'; ctx.fillText(QUADRANT_LABELS.topRight, padL + w * 3 / 4, padT + 18);
+  ctx.fillStyle = '#cc2222'; ctx.fillText(QUADRANT_LABELS.bottomLeft, padL + w / 4, padT + h / 2 + 18);
+  ctx.fillStyle = '#0a90b0'; ctx.fillText(QUADRANT_LABELS.bottomRight, padL + w * 3 / 4, padT + h / 2 + 18);
   ctx.globalAlpha = 1;
 
   // Grid lines
@@ -1228,6 +1226,11 @@ function renderQuadrant(data) {
   });
 }
 
+function renderQuadrant(data) {
+  var canvas = document.getElementById('quadrantChart');
+  drawQuadrantOnCanvas(canvas, data);
+}
+
 // ============================================================
 // EXPORT CSV
 // ============================================================
@@ -1252,7 +1255,7 @@ function exportCSV() {
 }
 
 // ============================================================
-// PRINT
+// PRINT (with quadrant chart image)
 // ============================================================
 function printResults() {
   var data = computeAggregateScores();
@@ -1260,7 +1263,14 @@ function printResults() {
   var fechaStr = state.fecha ? new Date(state.fecha + 'T12:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   var medals = ['🥇', '🥈', '🥉'];
 
+  // Generate the quadrant chart as a PNG data URL
+  var printCanvas = document.createElement('canvas');
+  var printWidth = 680;
+  drawQuadrantOnCanvas(printCanvas, data, printWidth);
+  var chartImageUrl = printCanvas.toDataURL('image/png');
+
   var rows = data.map(function(d, i) {
+    var pl = getPriorityLabel(d.total);
     return '<tr>'
       + '<td>' + (medals[i] || '') + ' ' + (i + 1) + '</td>'
       + '<td><strong>' + d.idea.shortName + '</strong><br><span style="font-size:11px;color:#666;">' + d.idea.title + '</span></td>'
@@ -1269,6 +1279,7 @@ function printResults() {
       + '<td>' + d.avgF.toFixed(2) + '</td>'
       + '<td>' + d.avgS.toFixed(2) + '</td>'
       + '<td><strong>' + d.total.toFixed(2) + '</strong></td>'
+      + '<td><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:bold;' + (pl[1] === 'priority-high' ? 'background:#e0f7e0;color:#1a6020;' : pl[1] === 'priority-mid' ? 'background:#fff8e0;color:#7a5500;' : 'background:#fff0f0;color:#FF4343;') + '">' + pl[0] + '</span></td>'
       + '</tr>';
   }).join('');
 
@@ -1280,7 +1291,10 @@ function printResults() {
     + '<style>'
     + 'body { font-family: Arial, sans-serif; padding: 32px; color: #0d2233; }'
     + 'h1 { color: #0a90b0; font-size: 22px; margin-bottom: 4px; }'
+    + 'h2 { color: #0a90b0; font-size: 16px; margin-top: 28px; margin-bottom: 12px; border-bottom: 2px solid #e0f7fd; padding-bottom: 8px; }'
     + '.meta { color: #666; font-size: 13px; margin-bottom: 24px; }'
+    + '.chart-container { text-align: center; margin: 20px 0 32px; page-break-inside: avoid; }'
+    + '.chart-container img { max-width: 100%; height: auto; }'
     + 'table { width: 100%; border-collapse: collapse; font-size: 12px; }'
     + 'th { background: #0FBAE3; color: #fff; padding: 10px 12px; text-align: left; }'
     + 'td { padding: 10px 12px; border-bottom: 1px solid #eee; }'
@@ -1289,7 +1303,10 @@ function printResults() {
     + '</style></head><body>'
     + '<h1>Mapa de Priorización de Ideas · Plynn</h1>'
     + '<div class="meta">🏢 ' + state.empresa + ' &nbsp;·&nbsp; 📅 ' + fechaStr + ' &nbsp;·&nbsp; 👥 ' + state.evaluators.length + ' evaluador(es)</div>'
-    + '<table><thead><tr><th>#</th><th>Idea</th><th>Reto asociado</th><th>Tipo</th><th>Factible</th><th>Estratégico</th><th>Nota Final</th></tr></thead>'
+    + '<h2>📊 Matriz Estratégico × Factible</h2>'
+    + '<div class="chart-container"><img src="' + chartImageUrl + '" alt="Matriz de cuadrantes"></div>'
+    + '<h2>🏆 Ranking de Ideas</h2>'
+    + '<table><thead><tr><th>#</th><th>Idea</th><th>Reto asociado</th><th>Tipo</th><th>Factible</th><th>Estratégico</th><th>Nota Final</th><th>Prioridad</th></tr></thead>'
     + '<tbody>' + rows + '</tbody></table>'
     + '<div class="footer">Generado por Plynn · Plataforma de Innovación</div>'
     + '<scr' + 'ipt>window.onload=function(){window.print();}<\/scr' + 'ipt>'
@@ -1298,7 +1315,7 @@ function printResults() {
 }
 
 // ============================================================
-// INITIALIZATION (with Wix email integration)
+// INITIALIZATION
 // ============================================================
 function initFromUrl() {
   var emailFromWix = getUrlParam('empresa');
@@ -1306,7 +1323,6 @@ function initFromUrl() {
     var decoded = decodeURIComponent(emailFromWix);
     document.getElementById('sessionEmpresa').value = decoded;
     state.empresa = decoded;
-    // Lock the field so user can't change it
     document.getElementById('sessionEmpresa').readOnly = true;
     document.getElementById('sessionEmpresa').style.opacity = '0.6';
     document.getElementById('sessionEmpresa').title = 'Este campo se asigna automáticamente desde tu cuenta';
