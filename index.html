@@ -429,12 +429,20 @@ var CRITERIA = [
 var FC = CRITERIA.filter(function(c) { return c.axis === 'FACTIBLE'; });
 var EC = CRITERIA.filter(function(c) { return c.axis === 'ESTRATÉGICO'; });
 
-// Quadrant label configuration (used both on-screen and in print)
+// ============================================================
+// CUADRANTES — CORRECCIÓN v7
+// Canvas: X = Estratégico (izq=bajo, der=alto) | Y = Factible (abajo=bajo, arriba=alto)
+//
+//  topLeft    = bajo estratégico, alto factible  → IDEAS PARA REVISAR
+//  topRight   = alto estratégico, alto factible  → IDEAS PRIORIZADAS BANCO DE IDEAS
+//  bottomLeft = bajo estratégico, bajo factible  → IDEAS DESCARTADAS
+//  bottomRight= alto estratégico, bajo factible  → IDEAS PARA REVISAR
+// ============================================================
 var QUADRANT_LABELS = {
-  topLeft:     'INNOVACIÓN ABIERTA',
-  topRight:    'INNOVACIÓN CERRADA',
-  bottomLeft:  'RETOS DESCARTADOS',
-  bottomRight: 'INTRAEMPRENDIMIENTO'
+  topLeft:     'IDEAS PARA REVISAR',
+  topRight:    'IDEAS PRIORIZADAS BANCO DE IDEAS',
+  bottomLeft:  'IDEAS DESCARTADAS',
+  bottomRight: 'IDEAS PARA REVISAR'
 };
 
 var state = {
@@ -1126,7 +1134,15 @@ function renderEvalBreakdown() {
 }
 
 // ============================================================
-// QUADRANT CHART (shared drawing function for screen & print)
+// QUADRANT CHART
+// ============================================================
+// Eje X = Estratégico (0 izq → 5 der)
+// Eje Y = Factible    (0 abajo → 5 arriba, invertido en canvas)
+//
+//  Canvas top-left    → bajo X, alto Y  → bajo estratégico, alto factible  → IDEAS PARA REVISAR
+//  Canvas top-right   → alto X, alto Y  → alto estratégico, alto factible  → IDEAS PRIORIZADAS BANCO DE IDEAS
+//  Canvas bottom-left → bajo X, bajo Y  → bajo estratégico, bajo factible  → IDEAS DESCARTADAS
+//  Canvas bottom-right→ alto X, bajo Y  → alto estratégico, bajo factible  → IDEAS PARA REVISAR
 // ============================================================
 function drawQuadrantOnCanvas(canvas, data, targetWidth) {
   var ctx = canvas.getContext('2d');
@@ -1144,19 +1160,36 @@ function drawQuadrantOnCanvas(canvas, data, targetWidth) {
   var h = ch - padT - padB;
 
   // Quadrant backgrounds
-  ctx.fillStyle = 'rgba(15,186,227,0.07)'; ctx.fillRect(padL, padT, w / 2, h / 2);
-  ctx.fillStyle = 'rgba(255,187,0,0.10)'; ctx.fillRect(padL + w / 2, padT, w / 2, h / 2);
-  ctx.fillStyle = 'rgba(255,67,67,0.07)'; ctx.fillRect(padL, padT + h / 2, w / 2, h / 2);
-  ctx.fillStyle = 'rgba(15,186,227,0.07)'; ctx.fillRect(padL + w / 2, padT + h / 2, w / 2, h / 2);
+  // top-left: bajo estratégico, alto factible
+  ctx.fillStyle = 'rgba(255,187,0,0.10)';   ctx.fillRect(padL,           padT,           w / 2, h / 2);
+  // top-right: alto estratégico, alto factible → IDEAS PRIORIZADAS
+  ctx.fillStyle = 'rgba(34,197,94,0.10)';   ctx.fillRect(padL + w / 2,   padT,           w / 2, h / 2);
+  // bottom-left: bajo estratégico, bajo factible → IDEAS DESCARTADAS
+  ctx.fillStyle = 'rgba(255,67,67,0.07)';   ctx.fillRect(padL,           padT + h / 2,   w / 2, h / 2);
+  // bottom-right: alto estratégico, bajo factible
+  ctx.fillStyle = 'rgba(15,186,227,0.07)';  ctx.fillRect(padL + w / 2,   padT + h / 2,   w / 2, h / 2);
 
   // Quadrant labels
   ctx.globalAlpha = 0.9;
   ctx.font = 'bold 9px Montserrat, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#0a90b0'; ctx.fillText(QUADRANT_LABELS.topLeft, padL + w / 4, padT + 18);
-  ctx.fillStyle = '#8a6000'; ctx.fillText(QUADRANT_LABELS.topRight, padL + w * 3 / 4, padT + 18);
-  ctx.fillStyle = '#cc2222'; ctx.fillText(QUADRANT_LABELS.bottomLeft, padL + w / 4, padT + h / 2 + 18);
-  ctx.fillStyle = '#0a90b0'; ctx.fillText(QUADRANT_LABELS.bottomRight, padL + w * 3 / 4, padT + h / 2 + 18);
+
+  // top-left → IDEAS PARA REVISAR
+  ctx.fillStyle = '#8a6000';
+  ctx.fillText(QUADRANT_LABELS.topLeft, padL + w / 4, padT + 18);
+
+  // top-right → IDEAS PRIORIZADAS BANCO DE IDEAS
+  ctx.fillStyle = '#1a6020';
+  ctx.fillText(QUADRANT_LABELS.topRight, padL + w * 3 / 4, padT + 18);
+
+  // bottom-left → IDEAS DESCARTADAS
+  ctx.fillStyle = '#cc2222';
+  ctx.fillText(QUADRANT_LABELS.bottomLeft, padL + w / 4, padT + h / 2 + 18);
+
+  // bottom-right → IDEAS PARA REVISAR
+  ctx.fillStyle = '#0a90b0';
+  ctx.fillText(QUADRANT_LABELS.bottomRight, padL + w * 3 / 4, padT + h / 2 + 18);
+
   ctx.globalAlpha = 1;
 
   // Grid lines
@@ -1255,7 +1288,7 @@ function exportCSV() {
 }
 
 // ============================================================
-// PRINT (with quadrant chart image)
+// PRINT
 // ============================================================
 function printResults() {
   var data = computeAggregateScores();
@@ -1263,7 +1296,6 @@ function printResults() {
   var fechaStr = state.fecha ? new Date(state.fecha + 'T12:00:00').toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
   var medals = ['🥇', '🥈', '🥉'];
 
-  // Generate the quadrant chart as a PNG data URL
   var printCanvas = document.createElement('canvas');
   var printWidth = 680;
   drawQuadrantOnCanvas(printCanvas, data, printWidth);
