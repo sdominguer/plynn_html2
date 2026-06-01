@@ -434,13 +434,13 @@ var EC = CRITERIA.filter(function(c) { return c.axis === 'ESTRATÉGICO'; });
 // Canvas: X = Estratégico (izq=bajo, der=alto) | Y = Factible (abajo=bajo, arriba=alto)
 //
 //  topLeft    = bajo estratégico, alto factible  → IDEAS PARA REVISAR
-//  topRight   = alto estratégico, alto factible  → IDEAS PRIORIZADAS BANCO DE IDEAS
+//  topRight   = alto estratégico, alto factible  → BANCO DE IDEAS
 //  bottomLeft = bajo estratégico, bajo factible  → IDEAS DESCARTADAS
 //  bottomRight= alto estratégico, bajo factible  → IDEAS PARA REVISAR
 // ============================================================
 var QUADRANT_LABELS = {
   topLeft:     'IDEAS PARA REVISAR',
-  topRight:    'IDEAS PRIORIZADAS BANCO DE IDEAS',
+  topRight:    'BANCO DE IDEAS',
   bottomLeft:  'IDEAS DESCARTADAS',
   bottomRight: 'IDEAS PARA REVISAR'
 };
@@ -1140,7 +1140,7 @@ function renderEvalBreakdown() {
 // Eje Y = Factible    (0 abajo → 5 arriba, invertido en canvas)
 //
 //  Canvas top-left    → bajo X, alto Y  → bajo estratégico, alto factible  → IDEAS PARA REVISAR
-//  Canvas top-right   → alto X, alto Y  → alto estratégico, alto factible  → IDEAS PRIORIZADAS BANCO DE IDEAS
+//  Canvas top-right   → alto X, alto Y  → alto estratégico, alto factible  → BANCO DE IDEAS
 //  Canvas bottom-left → bajo X, bajo Y  → bajo estratégico, bajo factible  → IDEAS DESCARTADAS
 //  Canvas bottom-right→ alto X, bajo Y  → alto estratégico, bajo factible  → IDEAS PARA REVISAR
 // ============================================================
@@ -1178,7 +1178,7 @@ function drawQuadrantOnCanvas(canvas, data, targetWidth) {
   ctx.fillStyle = '#8a6000';
   ctx.fillText(QUADRANT_LABELS.topLeft, padL + w / 4, padT + 18);
 
-  // top-right → IDEAS PRIORIZADAS BANCO DE IDEAS
+  // top-right → BANCO DE IDEAS
   ctx.fillStyle = '#1a6020';
   ctx.fillText(QUADRANT_LABELS.topRight, padL + w * 3 / 4, padT + 18);
 
